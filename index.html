@@ -10,9 +10,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
   <link rel="preconnect" href="https://cdn.sheetjs.com" crossorigin>
-  <!-- Tailwind Play CDN does not serve CORS headers, so SRI cannot be used
-       here; version is pinned instead. SRI-protected scripts below. -->
-  <script defer src="https://cdn.tailwindcss.com/3.4.5"></script>
+  <!-- Precompiled Tailwind (built with standalone CLI v4; rebuild if new
+       utility classes are added: tailwindcss -i tailwind.input.css -o tailwind.css -m) -->
+  <link rel="stylesheet" href="tailwind.css">
   <script defer src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.min.js" integrity="sha384-8nT3SpButyvenpAdKYPJzXdSz3zidMGduMoaMvwjKnAWVv238n6P1mhveiJJQWrV" crossorigin="anonymous"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" integrity="sha384-D/t0ZMqQW31H3az8ktEiNb39wyKnS82iFY52QPACM+IjKW3jDUhyIgh2PApRqJZs" crossorigin="anonymous"></script>
   <script defer src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" integrity="sha384-gx12pQMMYnabkTgbCHqqrT65RwDnXI/f/dU2H9JUmT0KUeiMF5bf+yroQBmX0Nuk" crossorigin="anonymous"></script>
@@ -118,6 +118,10 @@
     .filter-scroll::-webkit-scrollbar { display: none; }
 
     kbd { border: 1px solid var(--border); background: var(--surface2); color: var(--faint); }
+
+    /* Pin the Tailwind v3 monospace stack — v4's default mono stack renders
+       wider, which made the year badge wrap the agency name to two lines. */
+    .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
 
     .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--spinner); border-radius: 50%; animation: spin .8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
