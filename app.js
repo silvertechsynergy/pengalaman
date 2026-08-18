@@ -180,9 +180,21 @@ async function fetchProjects() {
     if (typeof Papa === "undefined") throw new Error("CSV parser (PapaParse) failed to load from CDN. Check connection/ad-blocker.");
     let csvText = await loadCSVText();
 
+    // Google sometimes returns an HTML error/login page instead of CSV
+    if (/^\s*<(!doctype|html)/i.test(csvText)) {
+      throw new Error(
+        "Google Sheets returned a web page instead of CSV data. The sheet may have been unpublished — re-publish it via File → Share → Publish to web."
+      );
+    }
+
     // Skip any blank rows above the real header row
     const lines = csvText.split(/\r?\n/);
     const idx = lines.findIndex((l) => l.includes(COL.title));
+    if (idx === -1) {
+      throw new Error(
+        "Could not find the header row (TAJUK KONTRAK) in the published CSV. Check that the sheet columns are intact and it is published as CSV."
+      );
+    }
     if (idx > 0) csvText = lines.slice(idx).join("\n");
 
     const parsed = Papa.parse(csvText, {
@@ -225,6 +237,16 @@ async function fetchProjects() {
     // Collect unique years (numeric descending)
     state.years = [...new Set(state.records.map((r) => r.tahun).filter(Boolean))]
       .sort((a, b) => b - a);
+
+    // Zero valid records almost certainly means something is wrong —
+    // a healthy sheet has hundreds. Fail loudly instead of showing an
+    // empty-but-green page that looks like the data vanished.
+    if (state.records.length === 0) {
+      throw new Error(
+        "The sheet loaded but contained no valid project rows. " +
+          "Check that the TAJUK KONTRAK column has data."
+      );
+    }
 
     showReady();
     renderAll();
