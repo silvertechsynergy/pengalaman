@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Experience Database</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+
+    /* ---------- Theme tokens ---------- */
+    html[data-theme="dark"] {
+      --bg: #000; --surface: #0a0a0a; --surface2: #111; --text: #fff;
+      --muted: #a3a3a3; --faint: #737373; --border: rgba(255,255,255,.08);
+      --accent: #a855f7; --accent-text: #d8b4fe;
+      --tag-bg: rgba(168,85,247,.12); --tag-border: rgba(168,85,247,.35); --tag-text: #d8b4fe;
+      --mark-bg: rgba(168,85,247,.35); --mark-text: #fff;
+      --glow: radial-gradient(800px 400px at 50% 0%, rgba(168,85,247,.07), transparent 70%);
+      --header-bg: rgba(0,0,0,.8);
+      --stat-grad: linear-gradient(to right, #ffffff, #a3a3a3);
+      --input-bg: #0f0f0f;
+      --spinner: #a855f7;
+      color-scheme: dark;
+    }
+    html[data-theme="light"] {
+      --bg: #f6f7fb; --surface: #ffffff; --surface2: #eef1f6; --text: #111827;
+      --muted: #4b5563; --faint: #9ca3af; --border: rgba(17,24,39,.1);
+      --accent: #7c3aed; --accent-text: #6d28d9;
+      --tag-bg: rgba(124,58,237,.08); --tag-border: rgba(124,58,237,.3); --tag-text: #6d28d9;
+      --mark-bg: rgba(124,58,237,.25); --mark-text: #111827;
+      --glow: radial-gradient(800px 400px at 50% 0%, rgba(124,58,237,.08), transparent 70%);
+      --header-bg: rgba(255,255,255,.8);
+      --stat-grad: linear-gradient(to right, #111827, #6b7280);
+      --input-bg: #ffffff;
+      --spinner: #7c3aed;
+      color-scheme: light;
+    }
+
+    body { background: var(--bg); color: var(--text); }
+    .surface { background: var(--surface); }
+    .surface2 { background: var(--surface2); }
+    .bord { border-color: var(--border) !important; }
+    .muted { color: var(--muted); } .faint { color: var(--faint); }
+
+    /* Smooth theme fade — compositor-friendly (opacity only, zero layout cost).
+       Activated only for the brief moment of switching. */
+    html.theme-fading body { opacity: 0; }
+    body { transition: opacity .18s ease; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* Search glow */
+    .search-box { background: var(--input-bg); border: 1px solid var(--border); transition: border-color .3s ease, box-shadow .3s ease; }
+    .search-box:focus-within { border-color: var(--tag-border); box-shadow: 0 0 30px -10px var(--tag-border); }
+
+    /* Card hover — only compositor-friendly properties animate */
+    .project-card { transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; border: 1px solid var(--border); background: var(--surface); }
+    .project-card:hover { border-color: var(--tag-border); transform: translateY(-2px); box-shadow: 0 20px 40px -15px rgba(0,0,0,.4); }
+
+    /* Tags */
+    .tag { transition: background-color .2s ease, border-color .2s ease, color .2s ease; border: 1px solid var(--border); color: var(--muted); }
+    .tag:hover { background: var(--tag-bg); border-color: var(--tag-border); color: var(--tag-text); }
+    .tag.active { background: var(--tag-bg); border-color: var(--tag-border); color: var(--tag-text); }
+
+    /* Equipment chips — neutral, non-clickable counterpart of tags */
+    .equip-chip { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); }
+
+    /* Card link (download) button */
+    .link-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 26px; height: 26px; border-radius: 999px;
+      border: 1px solid var(--border); color: var(--muted);
+      transition: background-color .2s ease, border-color .2s ease, color .2s ease;
+    }
+    .link-btn:hover { background: var(--tag-bg); border-color: var(--tag-border); color: var(--tag-text); }
+
+    mark { background: var(--mark-bg); color: var(--mark-text); border-radius: 2px; padding: 0 2px; }
+
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px);} to { opacity: 1; transform: translateY(0);} }
+    .fade-in-up { animation: fadeInUp .4s ease forwards; opacity: 0; }
+
+    .pulse-dot { animation: pulse 2s cubic-bezier(.4,0,.6,1) infinite; }
+    @keyframes pulse { 0%,100% {opacity:1;} 50% {opacity:.4;} }
+
+    .stat-number { background: var(--stat-grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .hero-title { background: var(--stat-grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+
+    .header-bar { background: var(--header-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+    .bg-glow { background: var(--glow); }
+
+    .btn-ghost { border: 1px solid var(--border); color: var(--muted); transition: background-color .15s ease, color .15s ease; }
+    .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+
+    .filter-scroll { scrollbar-width: none; }
+    .filter-scroll::-webkit-scrollbar { display: none; }
+
+    kbd { border: 1px solid var(--border); background: var(--surface2); color: var(--faint); }
+
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--spinner); border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- Background glow -->
+  <div class="fixed inset-0 pointer-events-none bg-glow"></div>
+
+  <!-- Header -->
+  <header class="fixed top-0 left-0 right-0 z-50 border-b bord header-bar">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--accent);">
+          <i data-lucide="layers" class="w-4 h-4 text-white"></i>
+        </div>
+        <span class="font-semibold text-sm tracking-tight">Project Experience</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="exportBtn" class="btn-ghost flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs" title="Export filtered results to Excel">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline">Export</span>
+        </button>
+        <button id="refreshBtn" class="btn-ghost flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs" title="Refresh data">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="refreshIcon"></i>
+        </button>
+        <button id="themeToggle" class="btn-ghost flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs" title="Toggle dark/light mode" aria-label="Toggle dark/light mode">
+          <i data-lucide="sun" class="w-3.5 h-3.5" id="themeIcon"></i>
+        </button>
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs faint">
+          <div id="statusDot" class="w-1.5 h-1.5 rounded-full bg-amber-500 pulse-dot"></div>
+          <span id="totalCount">0</span> projects
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-28 pb-20 relative">
+
+    <!-- Hero -->
+    <div class="text-center mb-10">
+      <h1 class="hero-title text-3xl sm:text-4xl md:text-5xl font-medium tracking-tight mb-3">Company Project Experience</h1>
+      <p class="muted text-base sm:text-lg font-light max-w-xl mx-auto">Search past contracts by agency, title, tag, kod bidang, or company. Data syncs live from Google Sheets.</p>
+    </div>
+
+    <!-- Search -->
+    <div class="max-w-2xl mx-auto mb-6">
+      <div class="search-box relative flex items-center rounded-2xl px-4 py-3">
+        <i data-lucide="search" class="w-5 h-5 faint flex-shrink-0"></i>
+        <input id="searchInput" type="text" placeholder="Type to search... e.g. network, cctv, selangor, 210105, equipment name, ID"
+          class="flex-1 bg-transparent text-sm sm:text-base outline-none ml-3 font-light" style="color: var(--text);"
+          autocomplete="off" spellcheck="false">
+        <button id="clearBtn" class="hidden flex-shrink-0 p-1 rounded-lg btn-ghost" style="border:none" title="Clear search">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+        <div class="hidden sm:flex items-center gap-1 ml-2 flex-shrink-0 pl-3" style="border-left: 1px solid var(--border);">
+          <kbd class="px-1.5 py-0.5 text-[10px] rounded font-mono">/</kbd>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tag filters -->
+    <div class="max-w-4xl mx-auto mb-4">
+      <div id="filterTags" class="filter-scroll flex items-center gap-2 overflow-x-auto pb-2 justify-center flex-wrap"></div>
+    </div>
+
+    <!-- Active filter info -->
+    <div id="activeFilter" class="hidden max-w-2xl mx-auto mb-6 text-center">
+      <span class="text-xs faint">Showing results for: </span>
+      <span id="activeFilterText" class="text-xs font-medium" style="color: var(--accent-text);"></span>
+    </div>
+
+    <!-- Stats -->
+    <div class="max-w-7xl mx-auto mb-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div class="surface border bord rounded-xl p-4 text-center">
+        <div class="stat-number text-2xl font-semibold" id="statTotal">0</div>
+        <div class="text-[11px] faint mt-1 uppercase tracking-wider">Total Projects</div>
+      </div>
+      <div class="surface border bord rounded-xl p-4 text-center">
+        <div class="stat-number text-2xl font-semibold" id="statClients">0</div>
+        <div class="text-[11px] faint mt-1 uppercase tracking-wider">Unique Agencies</div>
+      </div>
+      <div class="surface border bord rounded-xl p-4 text-center">
+        <div class="stat-number text-2xl font-semibold" id="statTags">0</div>
+        <div class="text-[11px] faint mt-1 uppercase tracking-wider">Tags</div>
+      </div>
+      <div class="surface border bord rounded-xl p-4 text-center">
+        <div class="stat-number text-2xl font-semibold" id="statShowing">0</div>
+        <div class="text-[11px] faint mt-1 uppercase tracking-wider">Showing</div>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div id="loadingState" class="flex flex-col items-center justify-center py-20">
+      <div class="spinner mb-4"></div>
+      <p class="muted text-sm">Syncing experience data from Google Sheets...</p>
+    </div>
+
+    <!-- Error -->
+    <div id="errorState" class="hidden text-center py-16">
+      <div class="w-14 h-14 rounded-2xl border border-red-500/20 bg-red-950/40 flex items-center justify-center mx-auto mb-4">
+        <i data-lucide="alert-triangle" class="w-6 h-6 text-red-400"></i>
+      </div>
+      <h3 class="text-lg font-medium mb-2">Failed to load Google Sheet</h3>
+      <p id="errorMessage" class="text-sm muted max-w-md mx-auto mb-5"></p>
+      <button id="retryBtn" class="px-4 py-2 text-xs font-medium rounded-lg transition-colors" style="color: var(--accent-text); border: 1px solid var(--tag-border);">
+        Try Again
+      </button>
+    </div>
+
+    <!-- Results -->
+    <div id="resultsGrid" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+
+    <!-- No results -->
+    <div id="noResults" class="hidden text-center py-20 fade-in-up">
+      <div class="w-16 h-16 rounded-2xl surface border bord flex items-center justify-center mx-auto mb-5">
+        <i data-lucide="search-x" class="w-7 h-7 faint"></i>
+      </div>
+      <h3 class="text-lg font-medium mb-2">No projects found</h3>
+      <p class="text-sm faint max-w-sm mx-auto">Try adjusting your search terms or clearing the filters.</p>
+      <button id="clearAllBtn" class="mt-5 px-4 py-2 text-xs font-medium rounded-lg transition-colors" style="color: var(--accent-text); border: 1px solid var(--tag-border);">
+        Clear Search &amp; Filters
+      </button>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t bord py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <p class="text-xs faint">Project Experience Database • Live Google Sheet Sync</p>
+      <p class="text-xs faint" id="lastSync"></p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
