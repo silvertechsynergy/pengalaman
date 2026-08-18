@@ -107,6 +107,31 @@ els.themeToggle.addEventListener("click", () => {
 
 /* ================= Data ================= */
 
+// Inline SVG icons (Lucide 0.462.0, ISC license) — avoids re-running
+// lucide.createIcons() over ~1,700 card icons on every search keystroke.
+const ICONS = {
+  "file-text":
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ICLASS"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>',
+  calendar:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ICLASS"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>',
+  hash:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ICLASS"><line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/></svg>',
+  user:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ICLASS"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+  phone:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ICLASS"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+  bookmark:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ICLASS"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>',
+  download:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ICLASS"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>',
+  check:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ICLASS"><path d="M20 6 9 17l-5-5"/></svg>',
+};
+
+function icon(name, cls) {
+  return (ICONS[name] || "").replace("ICLASS", cls || "w-3 h-3");
+}
+
 function clean(v) {
   return (v || "").toString().trim();
 }
@@ -223,6 +248,18 @@ async function fetchProjects() {
         link: clean(row[COL.link]),
       }));
 
+    // Precompute the lowercase search haystack per record once —
+    // avoids rebuilding it for every record on every keystroke.
+    state.records.forEach((r) => {
+      r._haystack = [
+        r.id, r.agency, r.title, r.contractNo, r.tahun, r.value, r.officer,
+        r.phone, r.bidang, r.company, r.startDate, r.endDate, r.link,
+        ...r.tags, ...r.equipment,
+      ]
+        .join(" ")
+        .toLowerCase();
+    });
+
     // Collect unique tags with counts
     const tagCount = {};
     state.records.forEach((r) =>
@@ -255,7 +292,6 @@ async function fetchProjects() {
     showError(err);
   } finally {
     els.refreshIcon.classList.remove("animate-spin");
-    lucide.createIcons();
   }
 }
 
@@ -278,13 +314,7 @@ function getFiltered() {
 
     if (!q) return true;
 
-    const haystack = [
-      r.id, r.agency, r.title, r.contractNo, r.tahun, r.value, r.officer, r.phone,
-      r.bidang, r.company, r.startDate, r.endDate, r.link,
-      ...r.tags, ...r.equipment,
-    ]
-      .join(" ")
-      .toLowerCase();
+    const haystack = r._haystack;
 
     if (q.startsWith('"') && q.endsWith('"') && q.length > 2)
       return haystack.includes(q.slice(1, -1));
@@ -327,7 +357,7 @@ function renderFilterTags() {
   const btn = (label, active, count) =>
     `<button class="tag flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium ${active ? "active" : ""}" data-tagfilter="${escapeHtml(
       label
-    )}">${active ? '<i data-lucide="check" class="w-3 h-3 inline -mt-0.5"></i> ' : ""}${escapeHtml(label)}${count != null ? ` <span class="ml-1 opacity-50">${count}</span>` : ""}</button>`;
+    )}">${active ? icon("check", "w-3 h-3 inline -mt-0.5") + " " : ""}${escapeHtml(label)}${count != null ? ` <span class="ml-1 opacity-50">${count}</span>` : ""}</button>`;
 
   let html = btn("All", state.activeTags.length === 0, state.records.length);
   state.tags.forEach((t) => {
@@ -354,12 +384,12 @@ function companyBadge(company) {
   return `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium border" style="background: var(--tag-bg); border-color: var(--tag-border); color: var(--tag-text);">${escapeHtml(company)}</span>`;
 }
 
-function metaRow(icon, label, value, useHighlight) {
+function metaRow(iconName, label, value, useHighlight) {
   if (!value) return "";
   const v = useHighlight ? highlight(value) : escapeHtml(value);
   return `
     <div class="flex items-start gap-1.5">
-      <i data-lucide="${icon}" class="w-3 h-3 faint mt-0.5 flex-shrink-0"></i>
+      ${icon(iconName, "w-3 h-3 faint mt-0.5 flex-shrink-0")}
       <span class="text-[11px] faint w-20 flex-shrink-0">${label}</span>
       <span class="text-xs muted flex-1">${v}</span>
     </div>`;
@@ -368,8 +398,8 @@ function metaRow(icon, label, value, useHighlight) {
 function linkBtn(link) {
   if (!link) return "";
   const url = /^https?:\/\//i.test(link) ? link : "https://" + link;
-  return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="link-btn" title="Open link: ${escapeHtml(link)}" onclick="event.stopPropagation()">
-    <i data-lucide="download" class="w-3.5 h-3.5"></i>
+  return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="link-btn" title="Open link: ${escapeHtml(link)}">
+    ${icon("download", "w-3.5 h-3.5")}
   </a>`;
 }
 
@@ -418,6 +448,10 @@ function cardHtml(r, i) {
   </div>`;
 }
 
+// Track whether the initial data render already animated — subsequent
+// re-renders (search/filter) swap cards instantly via the .no-anim class.
+let hasAnimatedOnce = false;
+
 function renderAll() {
   const filtered = getFiltered();
 
@@ -441,7 +475,13 @@ function renderAll() {
     els.noResults.classList.add("hidden");
     els.grid.innerHTML = filtered.map(cardHtml).join("");
   }
-  lucide.createIcons();
+
+  // Let this render animate, then disable animations for future re-renders.
+  if (hasAnimatedOnce) els.grid.classList.add("no-anim");
+  else {
+    hasAnimatedOnce = true;
+    setTimeout(() => els.grid.classList.add("no-anim"), 800);
+  }
 }
 
 function updateActiveFilter() {
@@ -629,5 +669,4 @@ document.addEventListener("keydown", (e) => {
 /* ================= Init ================= */
 
 initTheme();
-lucide.createIcons();
 fetchProjects();

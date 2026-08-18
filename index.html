@@ -5,11 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Project Experience Database</title>
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <!-- Performance: warm up connections to CDNs before scripts load -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.sheetjs.com" crossorigin>
+  <!-- Tailwind Play CDN does not serve CORS headers, so SRI cannot be used
+       here; version is pinned instead. SRI-protected scripts below. -->
+  <script defer src="https://cdn.tailwindcss.com/3.4.5"></script>
+  <script defer src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.min.js" integrity="sha384-8nT3SpButyvenpAdKYPJzXdSz3zidMGduMoaMvwjKnAWVv238n6P1mhveiJJQWrV" crossorigin="anonymous"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" integrity="sha384-D/t0ZMqQW31H3az8ktEiNb39wyKnS82iFY52QPACM+IjKW3jDUhyIgh2PApRqJZs" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" integrity="sha384-gx12pQMMYnabkTgbCHqqrT65RwDnXI/f/dU2H9JUmT0KUeiMF5bf+yroQBmX0Nuk" crossorigin="anonymous"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script defer src="app.js"></script>
   <style>
     * { font-family: 'Inter', sans-serif; }
 
@@ -89,7 +97,10 @@
     mark { background: var(--mark-bg); color: var(--mark-text); border-radius: 2px; padding: 0 2px; }
 
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px);} to { opacity: 1; transform: translateY(0);} }
+    /* Entrance animation only on the first data load — re-renders
+       (search/filter) swap cards instantly without re-animating. */
     .fade-in-up { animation: fadeInUp .4s ease forwards; opacity: 0; }
+    .no-anim .fade-in-up { animation: none; opacity: 1; }
 
     .pulse-dot { animation: pulse 2s cubic-bezier(.4,0,.6,1) infinite; }
     @keyframes pulse { 0%,100% {opacity:1;} 50% {opacity:.4;} }
@@ -122,20 +133,20 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
       <div class="flex items-center gap-3">
         <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--accent);">
-          <i data-lucide="layers" class="w-4 h-4 text-white"></i>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-white"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>
         </div>
         <span class="font-semibold text-sm tracking-tight">Project Experience</span>
       </div>
       <div class="flex items-center gap-2">
         <button id="exportBtn" class="btn-ghost flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs" title="Export filtered results to Excel">
-          <i data-lucide="download" class="w-3.5 h-3.5"></i>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
           <span class="hidden sm:inline">Export</span>
         </button>
         <button id="refreshBtn" class="btn-ghost flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs" title="Refresh data">
-          <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="refreshIcon"></i>
+          <svg id="refreshIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
         </button>
         <button id="themeToggle" class="btn-ghost flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs" title="Toggle dark/light mode" aria-label="Toggle dark/light mode">
-          <i data-lucide="sun" class="w-3.5 h-3.5" id="themeIcon"></i>
+          <span class="inline-flex" id="themeIcon"></span>
         </button>
         <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs faint">
           <div id="statusDot" class="w-1.5 h-1.5 rounded-full bg-amber-500 pulse-dot"></div>
@@ -158,19 +169,19 @@
     <div class="max-w-2xl mx-auto mb-6">
       <div class="flex flex-col sm:flex-row gap-3">
         <div class="search-box relative flex items-center rounded-2xl px-4 py-3 flex-1">
-          <i data-lucide="search" class="w-5 h-5 faint flex-shrink-0"></i>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 faint flex-shrink-0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
           <input id="searchInput" type="text" placeholder="Type to search... e.g. network, cctv, selangor, 210105, equipment name, ID"
             class="flex-1 bg-transparent text-sm sm:text-base outline-none ml-3 font-light" style="color: var(--text);"
             autocomplete="off" spellcheck="false">
           <button id="clearBtn" class="hidden flex-shrink-0 p-1 rounded-lg btn-ghost" style="border:none" title="Clear search">
-            <i data-lucide="x" class="w-4 h-4"></i>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
           </button>
           <div class="hidden sm:flex items-center gap-1 ml-2 flex-shrink-0 pl-3" style="border-left: 1px solid var(--border);">
             <kbd class="px-1.5 py-0.5 text-[10px] rounded font-mono">/</kbd>
           </div>
         </div>
         <div class="search-box relative flex items-center rounded-2xl px-4 py-3 sm:w-40 flex-shrink-0">
-          <i data-lucide="calendar" class="w-4 h-4 faint flex-shrink-0"></i>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 faint flex-shrink-0"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
           <select id="yearFilter" class="flex-1 bg-transparent text-sm outline-none ml-2 font-light cursor-pointer" style="color: var(--text);" aria-label="Filter by year">
             <option value="">All Years</option>
           </select>
@@ -219,7 +230,7 @@
     <!-- Error -->
     <div id="errorState" class="hidden text-center py-16">
       <div class="w-14 h-14 rounded-2xl border border-red-500/20 bg-red-950/40 flex items-center justify-center mx-auto mb-4">
-        <i data-lucide="alert-triangle" class="w-6 h-6 text-red-400"></i>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-red-400"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
       </div>
       <h3 class="text-lg font-medium mb-2">Failed to load Google Sheet</h3>
       <p id="errorMessage" class="text-sm muted max-w-md mx-auto mb-5"></p>
@@ -234,7 +245,7 @@
     <!-- No results -->
     <div id="noResults" class="hidden text-center py-20 fade-in-up">
       <div class="w-16 h-16 rounded-2xl surface border bord flex items-center justify-center mx-auto mb-5">
-        <i data-lucide="search-x" class="w-7 h-7 faint"></i>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-7 h-7 faint"><path d="m13.5 8.5-5 5"/><path d="m8.5 8.5 5 5"/><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
       </div>
       <h3 class="text-lg font-medium mb-2">No projects found</h3>
       <p class="text-sm faint max-w-sm mx-auto">Try adjusting your search terms or clearing the filters.</p>
@@ -251,7 +262,5 @@
       <p class="text-xs faint" id="lastSync"></p>
     </div>
   </footer>
-
-  <script src="app.js"></script>
 </body>
 </html>
