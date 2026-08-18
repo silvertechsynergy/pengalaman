@@ -82,6 +82,10 @@
     }
     .link-btn:hover { background: var(--tag-bg); border-color: var(--tag-border); color: var(--tag-text); }
 
+    /* Year select — theme-aware dropdown */
+    #yearFilter { appearance: none; -webkit-appearance: none; }
+    #yearFilter option { background: var(--surface); color: var(--text); }
+
     mark { background: var(--mark-bg); color: var(--mark-text); border-radius: 2px; padding: 0 2px; }
 
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px);} to { opacity: 1; transform: translateY(0);} }
@@ -150,25 +154,34 @@
       <p class="muted text-base sm:text-lg font-light max-w-xl mx-auto">Search past contracts by agency, title, tag, kod bidang, or company. Data syncs live from Google Sheets.</p>
     </div>
 
-    <!-- Search -->
+    <!-- Search + Year -->
     <div class="max-w-2xl mx-auto mb-6">
-      <div class="search-box relative flex items-center rounded-2xl px-4 py-3">
-        <i data-lucide="search" class="w-5 h-5 faint flex-shrink-0"></i>
-        <input id="searchInput" type="text" placeholder="Type to search... e.g. network, cctv, selangor, 210105, equipment name, ID"
-          class="flex-1 bg-transparent text-sm sm:text-base outline-none ml-3 font-light" style="color: var(--text);"
-          autocomplete="off" spellcheck="false">
-        <button id="clearBtn" class="hidden flex-shrink-0 p-1 rounded-lg btn-ghost" style="border:none" title="Clear search">
-          <i data-lucide="x" class="w-4 h-4"></i>
-        </button>
-        <div class="hidden sm:flex items-center gap-1 ml-2 flex-shrink-0 pl-3" style="border-left: 1px solid var(--border);">
-          <kbd class="px-1.5 py-0.5 text-[10px] rounded font-mono">/</kbd>
+      <div class="flex flex-col sm:flex-row gap-3">
+        <div class="search-box relative flex items-center rounded-2xl px-4 py-3 flex-1">
+          <i data-lucide="search" class="w-5 h-5 faint flex-shrink-0"></i>
+          <input id="searchInput" type="text" placeholder="Type to search... e.g. network, cctv, selangor, 210105, equipment name, ID"
+            class="flex-1 bg-transparent text-sm sm:text-base outline-none ml-3 font-light" style="color: var(--text);"
+            autocomplete="off" spellcheck="false">
+          <button id="clearBtn" class="hidden flex-shrink-0 p-1 rounded-lg btn-ghost" style="border:none" title="Clear search">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+          <div class="hidden sm:flex items-center gap-1 ml-2 flex-shrink-0 pl-3" style="border-left: 1px solid var(--border);">
+            <kbd class="px-1.5 py-0.5 text-[10px] rounded font-mono">/</kbd>
+          </div>
+        </div>
+        <div class="search-box relative flex items-center rounded-2xl px-4 py-3 sm:w-40 flex-shrink-0">
+          <i data-lucide="calendar" class="w-4 h-4 faint flex-shrink-0"></i>
+          <select id="yearFilter" class="flex-1 bg-transparent text-sm outline-none ml-2 font-light cursor-pointer" style="color: var(--text);" aria-label="Filter by year">
+            <option value="">All Years</option>
+          </select>
         </div>
       </div>
     </div>
 
-    <!-- Tag filters -->
+    <!-- Tag filters (multi-select) -->
     <div class="max-w-4xl mx-auto mb-4">
       <div id="filterTags" class="filter-scroll flex items-center gap-2 overflow-x-auto pb-2 justify-center flex-wrap"></div>
+      <p class="text-center text-[11px] faint mt-1">Tip: you can select multiple tags</p>
     </div>
 
     <!-- Active filter info -->

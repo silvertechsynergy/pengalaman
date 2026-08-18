@@ -10,7 +10,8 @@ A lightweight static website that turns a published Google Sheet into a live, se
   - OR search: `cctv or pabx`
   - Exact phrase: `"supply and install"`
   - `/` keyboard shortcut to focus search, `Esc` to clear
-- **Tag filtering** — click any tag on a card (or in the filter bar) to filter; click again to clear
+- **Tag filtering** — multi-select: click tags (on cards or in the filter bar) to combine them with AND logic; a checkmark marks selected tags; "All" clears the selection
+- **Year filter** — dropdown to narrow results to a specific project year (`Tahun` column); combines with search and tags
 - **Dark / light mode** — instant toggle with smooth fade, remembers your preference
 - **Export to Excel** — downloads the currently filtered results as `.xlsx` (falls back to `.csv`)
 - **Auto-formatting** — currency normalized to `RM`, dates normalized to `DD/Mon/YY` regardless of how they're entered in the sheet
@@ -48,6 +49,7 @@ const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/.../pub?gid=0&si
 | `NAMA AGENSI` | Agency / client name |
 | `TAJUK KONTRAK` | Project / contract title |
 | `NO SST/KONTRAK/LO` | Contract, SST, or LO number |
+| `Tahun` | Project start year (e.g. `2023`) — powers the year filter |
 | `TARIKH BERKUATKUASA` | Start date (any format — auto-normalized) |
 | `TARIKH TAMAT` | End date |
 | `NILAI (RM)` | Contract value (auto-converted to RM display) |

@@ -13,6 +13,7 @@ const COL = {
   agency: "NAMA AGENSI",
   title: "TAJUK KONTRAK",
   contractNo: "NO SST/KONTRAK/LO",
+  tahun: "Tahun",
   startDate: "TARIKH BERKUATKUASA",
   endDate: "TARIKH TAMAT",
   value: "NILAI (RM)",
@@ -36,6 +37,7 @@ const els = {
   search: $("searchInput"),
   clearBtn: $("clearBtn"),
   filterTags: $("filterTags"),
+  yearFilter: $("yearFilter"),
   activeFilter: $("activeFilter"),
   activeFilterText: $("activeFilterText"),
   totalCount: $("totalCount"),
@@ -57,8 +59,10 @@ const els = {
 const state = {
   records: [],
   tags: [],
+  years: [],
   query: "",
-  activeTag: null,
+  activeTags: [], // multi-select
+  activeYear: null,
 };
 
 /* ================= Theme ================= */
@@ -194,6 +198,7 @@ async function fetchProjects() {
         agency: clean(row[COL.agency]),
         title: clean(row[COL.title]),
         contractNo: clean(row[COL.contractNo]),
+        tahun: clean(row[COL.tahun]),
         startDate: formatDate(row[COL.startDate]),
         endDate: formatDate(row[COL.endDate]),
         value: formatRM(row[COL.value]),
@@ -217,6 +222,10 @@ async function fetchProjects() {
       .sort((a, b) => tagCount[b] - tagCount[a])
       .map((t) => ({ name: t, count: tagCount[t] }));
 
+    // Collect unique years (numeric descending)
+    state.years = [...new Set(state.records.map((r) => r.tahun).filter(Boolean))]
+      .sort((a, b) => b - a);
+
     showReady();
     renderAll();
   } catch (err) {
@@ -233,15 +242,22 @@ async function fetchProjects() {
 function getFiltered() {
   const q = state.query.toLowerCase();
   return state.records.filter((r) => {
+    // Year filter
+    if (state.activeYear && r.tahun !== state.activeYear) return false;
+
+    // Multi-tag filter: record must have ALL selected tags
     if (
-      state.activeTag &&
-      !r.tags.some((t) => t.toLowerCase() === state.activeTag.toLowerCase())
+      state.activeTags.length > 0 &&
+      !state.activeTags.every((sel) =>
+        r.tags.some((t) => t.toLowerCase() === sel.toLowerCase())
+      )
     )
       return false;
+
     if (!q) return true;
 
     const haystack = [
-      r.id, r.agency, r.title, r.contractNo, r.value, r.officer, r.phone,
+      r.id, r.agency, r.title, r.contractNo, r.tahun, r.value, r.officer, r.phone,
       r.bidang, r.company, r.startDate, r.endDate, r.link,
       ...r.tags, ...r.equipment,
     ]
@@ -286,16 +302,29 @@ function highlight(text) {
 }
 
 function renderFilterTags() {
-  const btn = (label, active, onclick, count) =>
+  const btn = (label, active, count) =>
     `<button class="tag flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium ${active ? "active" : ""}" data-tagfilter="${escapeHtml(
       label
-    )}">${escapeHtml(label)}${count != null ? ` <span class="ml-1 opacity-50">${count}</span>` : ""}</button>`;
+    )}">${active ? '<i data-lucide="check" class="w-3 h-3 inline -mt-0.5"></i> ' : ""}${escapeHtml(label)}${count != null ? ` <span class="ml-1 opacity-50">${count}</span>` : ""}</button>`;
 
-  let html = btn("All", !state.activeTag, null, state.records.length);
+  let html = btn("All", state.activeTags.length === 0, state.records.length);
   state.tags.forEach((t) => {
-    html += btn(t.name, state.activeTag === t.name, null, t.count);
+    html += btn(t.name, state.activeTags.includes(t.name), t.count);
   });
   els.filterTags.innerHTML = html;
+}
+
+function renderYearFilter() {
+  const current = els.yearFilter.value;
+  els.yearFilter.innerHTML =
+    '<option value="">All Years</option>' +
+    state.years
+      .map((y) => {
+        const count = state.records.filter((r) => r.tahun === y).length;
+        return `<option value="${escapeHtml(y)}">${escapeHtml(y)} (${count})</option>`;
+      })
+      .join("");
+  els.yearFilter.value = state.activeYear || current || "";
 }
 
 function companyBadge(company) {
@@ -343,6 +372,7 @@ function cardHtml(r, i) {
     <div class="flex items-start justify-between gap-2 mb-3">
       <span class="text-[11px] faint uppercase tracking-wider font-medium leading-snug">${highlight(r.agency)}</span>
       <span class="flex items-center gap-1.5 flex-shrink-0">
+        ${r.tahun ? `<span class="text-[11px] faint font-mono">${escapeHtml(r.tahun)}</span>` : ""}
         ${linkBtn(r.link)}
         ${companyBadge(r.company)}
       </span>
@@ -378,6 +408,7 @@ function renderAll() {
   els.statShowing.textContent = filtered.length;
 
   renderFilterTags();
+  renderYearFilter();
   updateActiveFilter();
 
   // Grid / empty state
@@ -393,11 +424,12 @@ function renderAll() {
 
 function updateActiveFilter() {
   const parts = [];
+  if (state.activeYear) parts.push(`year: ${state.activeYear}`);
+  if (state.activeTags.length > 0) parts.push(`tags: ${state.activeTags.join(" + ")}`);
   if (state.query) parts.push(`"${state.query}"`);
-  if (state.activeTag) parts.push(`tag: ${state.activeTag}`);
   if (parts.length) {
     els.activeFilter.classList.remove("hidden");
-    els.activeFilterText.textContent = parts.join(" + ");
+    els.activeFilterText.textContent = parts.join("  •  ");
   } else {
     els.activeFilter.classList.add("hidden");
   }
@@ -452,6 +484,7 @@ function exportFiltered() {
     "NAMA AGENSI": r.agency,
     "TAJUK KONTRAK": r.title,
     "NO SST/KONTRAK/LO": r.contractNo,
+    Tahun: r.tahun,
     "TARIKH BERKUATKUASA": r.startDate,
     "TARIKH TAMAT": r.endDate,
     "NILAI (RM)": r.value,
@@ -465,17 +498,19 @@ function exportFiltered() {
   }));
 
   const stamp = new Date().toISOString().slice(0, 10);
-  const namePart = state.activeTag
-    ? "_" + state.activeTag.replace(/[^\w-]+/g, "-")
-    : "";
+  const nameParts = [];
+  if (state.activeYear) nameParts.push(state.activeYear);
+  if (state.activeTags.length > 0)
+    nameParts.push(state.activeTags.map((t) => t.replace(/[^\w-]+/g, "-")).join("-"));
+  const namePart = nameParts.length ? "_" + nameParts.join("_") : "";
 
   // Prefer real Excel when SheetJS is available; fall back to CSV.
   if (typeof XLSX !== "undefined") {
     const ws = XLSX.utils.json_to_sheet(rows);
     ws["!cols"] = [
-      { wch: 8 },  { wch: 34 }, { wch: 60 }, { wch: 22 }, { wch: 16 },
-      { wch: 14 }, { wch: 14 }, { wch: 24 }, { wch: 14 }, { wch: 18 },
-      { wch: 28 }, { wch: 10 }, { wch: 30 }, { wch: 34 },
+      { wch: 8 },  { wch: 34 }, { wch: 60 }, { wch: 22 }, { wch: 8 },
+      { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 24 }, { wch: 14 },
+      { wch: 18 }, { wch: 28 }, { wch: 10 }, { wch: 30 }, { wch: 34 },
     ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Experience");
@@ -511,10 +546,19 @@ els.search.addEventListener("input", (e) => {
 
 function clearSearchAndFilters() {
   state.query = "";
-  state.activeTag = null;
+  state.activeTags = [];
+  state.activeYear = null;
   els.search.value = "";
+  els.yearFilter.value = "";
   els.clearBtn.classList.add("hidden");
   renderAll();
+}
+
+// Toggle a tag in/out of the multi-select set
+function toggleTag(tag) {
+  const i = state.activeTags.indexOf(tag);
+  if (i === -1) state.activeTags.push(tag);
+  else state.activeTags.splice(i, 1);
 }
 
 els.clearBtn.addEventListener("click", () => {
@@ -525,13 +569,16 @@ els.clearAllBtn.addEventListener("click", clearSearchAndFilters);
 els.retryBtn.addEventListener("click", fetchProjects);
 els.refreshBtn.addEventListener("click", fetchProjects);
 els.exportBtn.addEventListener("click", exportFiltered);
+els.yearFilter.addEventListener("change", (e) => {
+  state.activeYear = e.target.value || null;
+  renderAll();
+});
 
 // Tag clicks (card tags + filter bar) via delegation
 document.addEventListener("click", (e) => {
   const cardTag = e.target.closest("[data-tag]");
   if (cardTag) {
-    const t = cardTag.dataset.tag;
-    state.activeTag = state.activeTag === t ? null : t;
+    toggleTag(cardTag.dataset.tag);
     renderAll();
     window.scrollTo({ top: 0, behavior: "smooth" });
     return;
@@ -539,7 +586,8 @@ document.addEventListener("click", (e) => {
   const filterTag = e.target.closest("[data-tagfilter]");
   if (filterTag) {
     const t = filterTag.dataset.tagfilter;
-    state.activeTag = t === "All" ? null : t;
+    if (t === "All") state.activeTags = [];
+    else toggleTag(t);
     renderAll();
   }
 });
