@@ -38,6 +38,7 @@ const els = {
   clearBtn: $("clearBtn"),
   filterTags: $("filterTags"),
   yearFilter: $("yearFilter"),
+  ownerFilter: $("ownerFilter"),
   activeFilter: $("activeFilter"),
   activeFilterText: $("activeFilterText"),
   totalCount: $("totalCount"),
@@ -60,10 +61,17 @@ const state = {
   records: [],
   tags: [],
   years: [],
+  owners: [],
   query: "",
   activeTags: [], // multi-select
   activeYear: null,
+  activeOwner: null,
 };
+
+// Sentinel value used in the dropdown to represent blank SYARIKAT cells
+// (rows where ownership hasn't been assigned yet). Stored separately so the
+// export still writes a blank, never the literal word.
+const UNASSIGNED = "__unassigned__";
 
 /* ================= Theme ================= */
 
@@ -275,6 +283,14 @@ async function fetchProjects() {
     state.years = [...new Set(state.records.map((r) => r.tahun).filter(Boolean))]
       .sort((a, b) => b - a);
 
+    // Collect unique owners (non-blank, alphabetical). Blanks are tracked
+    // separately so the "Unassigned" option appears only when such rows exist.
+    const realOwners = [...new Set(state.records.map((r) => r.company).filter(Boolean))].sort();
+    const unassignedCount = state.records.filter((r) => !r.company).length;
+    state.owners = realOwners.map((o) => ({ name: o, isBlank: false }));
+    if (unassignedCount > 0)
+      state.owners.push({ name: "Unassigned", isBlank: true, count: unassignedCount });
+
     // Zero valid records almost certainly means something is wrong —
     // a healthy sheet has hundreds. Fail loudly instead of showing an
     // empty-but-green page that looks like the data vanished.
@@ -302,6 +318,13 @@ function getFiltered() {
   return state.records.filter((r) => {
     // Year filter
     if (state.activeYear && r.tahun !== state.activeYear) return false;
+
+    // Owner filter — supports the "Unassigned" pseudo-owner
+    if (state.activeOwner) {
+      if (state.activeOwner === UNASSIGNED) {
+        if (r.company) return false;
+      } else if (r.company !== state.activeOwner) return false;
+    }
 
     // Multi-tag filter: record must have ALL selected tags
     if (
@@ -377,6 +400,23 @@ function renderYearFilter() {
       })
       .join("");
   els.yearFilter.value = state.activeYear || current || "";
+}
+
+function renderOwnerFilter() {
+  const current = els.ownerFilter.value;
+  const total = state.records.length;
+  let html = `<option value="">All Owners (${total})</option>`;
+  state.owners.forEach((o) => {
+    const count = o.isBlank
+      ? o.count
+      : state.records.filter((r) => r.company === o.name).length;
+    const value = o.isBlank ? UNASSIGNED : o.name;
+    const label = o.isBlank ? "Unassigned" : o.name;
+    html += `<option value="${escapeHtml(value)}">${escapeHtml(label)} (${count})</option>`;
+  });
+  els.ownerFilter.innerHTML = html;
+  // keep selection stable across re-renders (incl. the Unassigned sentinel)
+  els.ownerFilter.value = state.activeOwner || "";
 }
 
 function companyBadge(company) {
@@ -465,6 +505,7 @@ function renderAll() {
 
   renderFilterTags();
   renderYearFilter();
+  renderOwnerFilter();
   updateActiveFilter();
 
   // Grid / empty state
@@ -486,6 +527,11 @@ function renderAll() {
 
 function updateActiveFilter() {
   const parts = [];
+  if (state.activeOwner) {
+    parts.push(
+      "owner: " + (state.activeOwner === UNASSIGNED ? "Unassigned" : state.activeOwner)
+    );
+  }
   if (state.activeYear) parts.push(`year: ${state.activeYear}`);
   if (state.activeTags.length > 0) parts.push(`tags: ${state.activeTags.join(" + ")}`);
   if (state.query) parts.push(`"${state.query}"`);
@@ -561,6 +607,8 @@ function exportFiltered() {
 
   const stamp = new Date().toISOString().slice(0, 10);
   const nameParts = [];
+  if (state.activeOwner)
+    nameParts.push(state.activeOwner === UNASSIGNED ? "Unassigned" : state.activeOwner);
   if (state.activeYear) nameParts.push(state.activeYear);
   if (state.activeTags.length > 0)
     nameParts.push(state.activeTags.map((t) => t.replace(/[^\w-]+/g, "-")).join("-"));
@@ -610,8 +658,10 @@ function clearSearchAndFilters() {
   state.query = "";
   state.activeTags = [];
   state.activeYear = null;
+  state.activeOwner = null;
   els.search.value = "";
   els.yearFilter.value = "";
+  els.ownerFilter.value = "";
   els.clearBtn.classList.add("hidden");
   renderAll();
 }
@@ -633,6 +683,10 @@ els.refreshBtn.addEventListener("click", fetchProjects);
 els.exportBtn.addEventListener("click", exportFiltered);
 els.yearFilter.addEventListener("change", (e) => {
   state.activeYear = e.target.value || null;
+  renderAll();
+});
+els.ownerFilter.addEventListener("change", (e) => {
+  state.activeOwner = e.target.value || null;
   renderAll();
 });
 
