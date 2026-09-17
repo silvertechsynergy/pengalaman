@@ -580,7 +580,41 @@ function showError(err) {
 
 /* ================= Export ================= */
 
-function exportFiltered() {
+// SheetJS is lazy-loaded on first use instead of shipping ~900KB to every
+// visitor. The SRI hash is preserved on the dynamically injected script tag.
+const XLSX_URL =
+  "https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js";
+const XLSX_SRI = "sha384-gx12pQMMYnabkTgbCHqqrT65RwDnXI/f/dU2H9JUmT0KUeiMF5bf+yroQBmX0Nuk";
+let xlsxPromise = null;
+
+function loadXLSX() {
+  if (typeof XLSX !== "undefined") return Promise.resolve();
+  if (!xlsxPromise) {
+    xlsxPromise = new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = XLSX_URL;
+      s.integrity = XLSX_SRI;
+      s.crossOrigin = "anonymous";
+      s.onload = () => resolve();
+      s.onerror = () => {
+        xlsxPromise = null; // allow retry on next click
+        reject(new Error("Excel library (SheetJS) could not be loaded from the CDN"));
+      };
+      document.head.appendChild(s);
+    });
+  }
+  return xlsxPromise;
+}
+
+// Warm the library in the background once the page is idle, so the first
+// Export click is instant for users who end up needing it.
+if ("requestIdleCallback" in window) {
+  requestIdleCallback(() => loadXLSX().catch(() => {}), { timeout: 8000 });
+} else {
+  setTimeout(() => loadXLSX().catch(() => {}), 4000);
+}
+
+async function exportFiltered() {
   const filtered = getFiltered();
   if (filtered.length === 0) {
     alert("No results to export.");
@@ -615,6 +649,12 @@ function exportFiltered() {
   const namePart = nameParts.length ? "_" + nameParts.join("_") : "";
 
   // Prefer real Excel when SheetJS is available; fall back to CSV.
+  try {
+    await loadXLSX();
+  } catch (err) {
+    console.warn("XLSX load failed, falling back to CSV:", err.message);
+  }
+
   if (typeof XLSX !== "undefined") {
     const ws = XLSX.utils.json_to_sheet(rows);
     ws["!cols"] = [
