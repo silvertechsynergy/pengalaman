@@ -11,12 +11,14 @@ A lightweight static website that turns a published Google Sheet into a live, se
   - Exact phrase: `"supply and install"`
   - `/` keyboard shortcut to focus search, `Esc` to clear everything
 - **Tag filtering** — multi-select: click tags (on cards or in the filter bar) to combine them with AND logic; a checkmark marks selected tags; "All" clears the selection
-- **Year filter** — dropdown to narrow results to a specific project year (`Tahun` column), with per-year counts; combines with search and tags
+- **Year filter** — dropdown to narrow results to a specific project year (`Tahun` column), with per-year counts
+- **Owner filter** — dropdown for the `SYARIKAT` column (e.g. STS, SGS) with live counts; blank rows appear as **Unassigned** so unassigned projects can be isolated during data entry
 - **Dark / light mode** — smooth fade toggle, remembers your preference, defaults to OS preference
-- **Export to Excel** — downloads the *currently filtered* results as `.xlsx` (falls back to `.csv` if the SheetJS CDN is unreachable); filename reflects active filters, e.g. `experience_export_2023_cctv_2026-08-18.xlsx`
+- **Export to Excel** — downloads the *currently filtered* results as `.xlsx` (falls back to `.csv` if the SheetJS CDN is unreachable); filename reflects active filters, e.g. `experience_export_STS_2023_cctv_2026-08-18.xlsx`
 - **Auto-formatting** — currency normalized to `RM`, dates normalized to `DD/Mon/YY` regardless of how they were entered in the sheet
 - **Equipment & Link columns** — equipment shown as chips; links shown as download buttons that open in a new tab (rendered only when populated)
 - **Robust loading** — detects Google error pages, missing header rows, and empty sheets, and shows a clear error with a Try Again button instead of a silently empty page
+- **Lightweight** — all icons are inline SVG, the Excel library loads only after the page is idle, and Tailwind ships as a small precompiled CSS file (~53% less JavaScript than the initial version)
 - **Responsive** — works on mobile and desktop
 
 ## Project structure
@@ -60,8 +62,8 @@ const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/.../pub?gid=0&si
 | `KOD BIDANG` | Bidang codes (comma-separated) |
 | `TAG` | Tags (comma-separated) — used for filtering |
 | `Equipment` | Equipment/tools used (comma-separated, optional) |
-| `SYARIKAT` | Company badge (e.g. STS, SGS) |
-| `Link` | URL to supporting document (optional) — shows a download button; `https://` is added automatically if missing |
+| `SYARIKAT` | Company owner (e.g. STS, SGS) — powers the owner filter; blank rows appear as "Unassigned" |
+| `Link` | URL to supporting document or folder (optional) — shows a download button; `https://` is added automatically if missing |
 
 > **Note:** Empty rows above the header row are fine — the app auto-detects the header. Blank `Equipment`/`Link` cells simply render nothing.
 
@@ -98,9 +100,9 @@ It's a pure static site — deploy the folder as-is. Include **all files** (espe
 
 - **Tailwind CSS** — precompiled static CSS (`tailwind.css`, generated with the Tailwind v4 standalone CLI); no runtime compiler
 - [PapaParse 5.4.1](https://www.papaparse.com/) (CDN) — CSV parsing
-- [SheetJS 0.20.2](https://sheetjs.com/) (CDN) — `.xlsx` export
+- [SheetJS 0.20.2](https://sheetjs.com/) (CDN, lazy-loaded after idle) — `.xlsx` export; loads only after the page has rendered, with CSV fallback
 - [Inter](https://fonts.google.com/specimen/Inter) (Google Fonts) — typography
-- Vanilla JS, inline SVG icons (Lucide paths) — no framework
+- Vanilla JS, inline SVG icons (Lucide paths) — no framework, no icon library at runtime
 
 CDN scripts are version-pinned and protected with SRI (subresource integrity) hashes where the CDN allows it, so a compromised CDN cannot inject arbitrary code.
 
@@ -122,6 +124,8 @@ Classes already in use are permanently covered — no rebuild needed for content
 
 **Changing the sheet link:** edit `SHEET_CSV_URL` at the top of `app.js`.
 
+**Adding a third company / owner:** nothing to do — the Owner dropdown auto-populates from the distinct values in the `SYARIKAT` column on next refresh.
+
 ## Troubleshooting
 
 | Problem | Cause | Fix |
@@ -135,3 +139,4 @@ Classes already in use are permanently covered — no rebuild needed for content
 | Sheet edits not appearing | Google republish delay | Wait ~5 minutes, then hard refresh. Ensure the sheet is still published (not just shared) |
 | New Tailwind class has no styling | `tailwind.css` is a compiled snapshot | Rebuild with the CLI (see Maintenance) |
 | Icons missing after editing | — | Icons are inline SVG in `app.js` (`ICONS` object) and `index.html`; no library call needed |
+| Export downloads `.csv` instead of `.xlsx` | SheetJS CDN was unreachable at click time (offline / blocked) | Export still works; retry later for Excel format — the library loads automatically |
