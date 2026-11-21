@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Project Experience Database</title>
+  <title>STS Database</title>
+  <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
   <!-- Performance: warm up connections to CDNs before scripts load -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -89,6 +90,10 @@
     }
     .link-btn:hover { background: var(--tag-bg); border-color: var(--tag-border); color: var(--tag-text); }
 
+    /* Partner card links (website / email) */
+    .partner-link { color: var(--accent-text); transition: opacity .15s ease; }
+    .partner-link:hover { opacity: .75; text-decoration: underline; }
+
     /* Year + owner selects — theme-aware dropdown */
     #yearFilter, #ownerFilter { appearance: none; -webkit-appearance: none; }
     #yearFilter option, #ownerFilter option { background: var(--surface); color: var(--text); }
@@ -113,6 +118,17 @@
     .btn-ghost { border: 1px solid var(--border); color: var(--muted); transition: background-color .15s ease, color .15s ease; }
     .btn-ghost:hover { background: var(--surface2); color: var(--text); }
 
+    /* Page nav (Pengalaman / Partner) */
+    .nav-link {
+      font-size: 12px; font-weight: 500;
+      padding: 5px 12px; border-radius: 8px;
+      color: var(--muted);
+      transition: background-color .15s ease, color .15s ease;
+      white-space: nowrap;
+    }
+    .nav-link:hover { color: var(--text); background: var(--surface2); }
+    .nav-link.active { color: var(--accent-text); background: var(--tag-bg); border: 1px solid var(--tag-border); }
+
     .filter-scroll { scrollbar-width: none; }
     .filter-scroll::-webkit-scrollbar { display: none; }
 
@@ -135,10 +151,14 @@
   <header class="fixed top-0 left-0 right-0 z-50 border-b bord header-bar">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--accent);">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-white"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>
+        <div class="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center">
+          <img src="favicon.png" alt="STS logo" class="w-full h-full object-cover">
         </div>
-        <span class="font-semibold text-sm tracking-tight">Project Experience</span>
+        <span class="font-semibold text-sm tracking-tight">STS Database</span>
+        <nav class="flex items-center gap-1 ml-3" aria-label="Pages">
+          <a href="#/pengalaman" id="navPengalaman" class="nav-link active">Pengalaman</a>
+          <a href="#/partner" id="navPartner" class="nav-link">Partner</a>
+        </nav>
       </div>
       <div class="flex items-center gap-2">
         <button id="exportBtn" class="btn-ghost flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs" title="Export filtered results to Excel">
@@ -162,11 +182,14 @@
   <!-- Main -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-28 pb-20 relative">
 
-    <!-- Hero -->
-    <div class="text-center mb-10">
-      <h1 class="hero-title text-3xl sm:text-4xl md:text-5xl font-medium tracking-tight mb-3">Company Project Experience</h1>
-      <p class="muted text-base sm:text-lg font-light max-w-xl mx-auto">Search past contracts by agency, title, tag, kod bidang, or company. Data syncs live from Google Sheets.</p>
-    </div>
+    <!-- ================= Pengalaman page ================= -->
+    <div id="pagePengalaman">
+
+      <!-- Hero -->
+      <div class="text-center mb-10">
+        <h1 class="hero-title text-3xl sm:text-4xl md:text-5xl font-medium tracking-tight mb-3">Company Project Experience</h1>
+        <p class="muted text-base sm:text-lg font-light max-w-xl mx-auto">Search past contracts by agency, title, tag, kod bidang, or company. Data syncs live from Google Sheets.</p>
+      </div>
 
     <!-- Search + Year -->
     <div class="max-w-2xl mx-auto mb-6">
@@ -262,12 +285,102 @@
         Clear Search &amp; Filters
       </button>
     </div>
+    </div><!-- /pagePengalaman -->
+
+    <!-- ================= Partner page ================= -->
+    <div id="pagePartner" class="hidden">
+
+      <!-- Hero -->
+      <div class="text-center mb-10">
+        <h1 class="hero-title text-3xl sm:text-4xl md:text-5xl font-medium tracking-tight mb-3">Partners &amp; Distributors</h1>
+        <p class="muted text-base sm:text-lg font-light max-w-xl mx-auto">Our partner and distributor network — contacts, brands carried, and specialties. Data syncs live from Google Sheets.</p>
+      </div>
+
+      <!-- Search -->
+      <div class="max-w-2xl mx-auto mb-6">
+        <div class="search-box relative flex items-center rounded-2xl px-4 py-3">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 faint flex-shrink-0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="partnerSearchInput" type="text" placeholder="Search partners... e.g. hikvision, cctv, puchong, sales name"
+            class="flex-1 bg-transparent text-sm sm:text-base outline-none ml-3 font-light" style="color: var(--text);"
+            autocomplete="off" spellcheck="false">
+          <button id="partnerClearBtn" class="hidden flex-shrink-0 p-1 rounded-lg btn-ghost" style="border:none" title="Clear search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Tag filters (multi-select) -->
+      <div class="max-w-4xl mx-auto mb-4">
+        <div id="partnerFilterTags" class="filter-scroll flex items-center gap-2 overflow-x-auto pb-2 justify-center flex-wrap"></div>
+        <p class="text-center text-[11px] faint mt-1">Tip: you can select multiple tags</p>
+      </div>
+
+      <!-- Active filter info -->
+      <div id="partnerActiveFilter" class="hidden max-w-2xl mx-auto mb-6 text-center">
+        <span class="text-xs faint">Showing results for: </span>
+        <span id="partnerActiveFilterText" class="text-xs font-medium" style="color: var(--accent-text);"></span>
+      </div>
+
+      <!-- Stats -->
+      <div class="max-w-7xl mx-auto mb-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="surface border bord rounded-xl p-4 text-center">
+          <div class="stat-number text-2xl font-semibold" id="pStatTotal">0</div>
+          <div class="text-[11px] faint mt-1 uppercase tracking-wider">Total Partners</div>
+        </div>
+        <div class="surface border bord rounded-xl p-4 text-center">
+          <div class="stat-number text-2xl font-semibold" id="pStatBrands">0</div>
+          <div class="text-[11px] faint mt-1 uppercase tracking-wider">Brands Carried</div>
+        </div>
+        <div class="surface border bord rounded-xl p-4 text-center">
+          <div class="stat-number text-2xl font-semibold" id="pStatTags">0</div>
+          <div class="text-[11px] faint mt-1 uppercase tracking-wider">Tags</div>
+        </div>
+        <div class="surface border bord rounded-xl p-4 text-center">
+          <div class="stat-number text-2xl font-semibold" id="pStatShowing">0</div>
+          <div class="text-[11px] faint mt-1 uppercase tracking-wider">Showing</div>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div id="partnerLoadingState" class="hidden flex flex-col items-center justify-center py-20">
+        <div class="spinner mb-4"></div>
+        <p class="muted text-sm">Syncing partner data from Google Sheets...</p>
+      </div>
+
+      <!-- Error -->
+      <div id="partnerErrorState" class="hidden text-center py-16">
+        <div class="w-14 h-14 rounded-2xl border border-red-500/20 bg-red-950/40 flex items-center justify-center mx-auto mb-4">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-red-400"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        </div>
+        <h3 class="text-lg font-medium mb-2">Failed to load partner sheet</h3>
+        <p id="partnerErrorMessage" class="text-sm muted max-w-md mx-auto mb-5"></p>
+        <button id="partnerRetryBtn" class="px-4 py-2 text-xs font-medium rounded-lg transition-colors" style="color: var(--accent-text); border: 1px solid var(--tag-border);">
+          Try Again
+        </button>
+      </div>
+
+      <!-- Results -->
+      <div id="partnerGrid" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+
+      <!-- No results -->
+      <div id="partnerNoResults" class="hidden text-center py-20 fade-in-up">
+        <div class="w-16 h-16 rounded-2xl surface border bord flex items-center justify-center mx-auto mb-5">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-7 h-7 faint"><path d="m13.5 8.5-5 5"/><path d="m8.5 8.5 5 5"/><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </div>
+        <h3 class="text-lg font-medium mb-2">No partners found</h3>
+        <p class="text-sm faint max-w-sm mx-auto">Try adjusting your search terms or clearing the filters.</p>
+        <button id="partnerClearAllBtn" class="mt-5 px-4 py-2 text-xs font-medium rounded-lg transition-colors" style="color: var(--accent-text); border: 1px solid var(--tag-border);">
+          Clear Search &amp; Filters
+        </button>
+      </div>
+    </div><!-- /pagePartner -->
+
   </main>
 
   <!-- Footer -->
   <footer class="border-t bord py-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-      <p class="text-xs faint">Project Experience Database • Live Google Sheet Sync</p>
+      <p class="text-xs faint">STS Database • Live Google Sheet Sync</p>
       <p class="text-xs faint" id="lastSync"></p>
     </div>
   </footer>
