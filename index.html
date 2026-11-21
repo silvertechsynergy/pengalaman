@@ -94,6 +94,54 @@
     .partner-link { color: var(--accent-text); transition: opacity .15s ease; }
     .partner-link:hover { opacity: .75; text-decoration: underline; }
 
+    /* Brand cap: "+N more" chip + themed popover */
+    .brand-more {
+      background: var(--tag-bg);
+      border: 1px solid var(--tag-border);
+      color: var(--tag-text);
+      cursor: pointer;
+      transition: background-color .15s ease, border-color .15s ease;
+      position: relative;
+    }
+    .brand-more:hover { filter: brightness(1.15); }
+    .brand-more.open { filter: brightness(1.25); }
+
+    .brand-popover {
+      position: fixed;
+      z-index: 30;
+      min-width: 220px;
+      max-width: 320px;
+      max-height: 240px;
+      overflow-y: auto;
+      background: var(--surface);
+      border: 1px solid var(--tag-border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      box-shadow: 0 16px 40px -10px rgba(0,0,0,.55);
+      opacity: 0;
+      transform: translateY(4px);
+      pointer-events: none;
+      transition: opacity .15s ease, transform .15s ease;
+    }
+    .brand-popover.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .brand-popover h4 {
+      font-size: 10px; text-transform: uppercase; letter-spacing: .08em;
+      color: var(--faint); margin-bottom: 8px; font-weight: 600;
+    }
+    .brand-popover .pop-brands {
+      display: flex; flex-wrap: wrap; gap: 5px;
+    }
+    .brand-popover .pop-brands span {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 5px;
+      padding: 2px 8px;
+      font-size: 10.5px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
     /* Year + owner selects — theme-aware dropdown */
     #yearFilter, #ownerFilter { appearance: none; -webkit-appearance: none; }
     #yearFilter option, #ownerFilter option { background: var(--surface); color: var(--text); }

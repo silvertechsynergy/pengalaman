@@ -880,6 +880,10 @@ function partnerMetaRow(iconName, label, value, isLink, isMail) {
     </div>`;
 }
 
+// Brand cap: show at most this many chips on the partner card; the rest
+// go into a hover/tap popover attached to the "+N more" chip.
+const BRAND_CAP = 6;
+
 function partnerCardHtml(r, i) {
   const delay = Math.min(i * 40, 400);
   const tags = r.tags
@@ -888,12 +892,17 @@ function partnerCardHtml(r, i) {
         `<button class="tag px-2 py-0.5 rounded text-[10px] font-medium" data-ptag="${escapeHtml(t)}">${partnerHighlight(t)}</button>`
     )
     .join("");
-  const brands = r.brands
+  const visibleBrands = r.brands.slice(0, BRAND_CAP);
+  const extraBrands = r.brands.slice(BRAND_CAP);
+  const brands = visibleBrands
     .map(
       (b) =>
         `<span class="equip-chip px-2 py-0.5 rounded text-[10px] font-medium">${partnerHighlight(b)}</span>`
     )
     .join("");
+  const moreChip = extraBrands.length
+    ? `<button class="brand-more px-2 py-0.5 rounded text-[10px] font-medium" data-pid="${escapeHtml(r.id)}">+${extraBrands.length} more</button>`
+    : "";
 
   const sales = r.sales.length ? escapeHtml(r.sales.join(", ")) : "";
   const salesEmails = r.salesEmail
@@ -926,7 +935,7 @@ function partnerCardHtml(r, i) {
       ${r.credit ? partnerMetaRow("wallet", "Credit", r.credit) : ""}
     </div>
 
-    ${brands ? `<div class="flex flex-wrap gap-1.5 mb-3">${brands}</div>` : ""}
+    ${brands ? `<div class="flex flex-wrap gap-1.5 mb-3 items-center">${brands}${moreChip}</div>` : ""}
     ${tags ? `<div class="flex flex-wrap gap-1.5 pt-3" style="border-top: 1px solid var(--border);">${tags}</div>` : ""}
   </div>`;
 }
@@ -1074,6 +1083,118 @@ document.addEventListener("click", (e) => {
     renderPartners();
   }
 });
+
+/* ================= Brand popover (hover / tap) ================= */
+
+// One shared popover element, repositioned to whichever "+N more" chip is
+// hovered or tapped. Hidden by default; styled to match the theme.
+const brandPopover = document.createElement("div");
+brandPopover.className = "brand-popover";
+document.body.appendChild(brandPopover);
+
+let popoverTarget = null; // chip currently bound to the popover
+let popoverHideTimer = null;
+
+function findPartnerById(pid) {
+  return partnerState.records.find((r) => r.id === pid);
+}
+
+function openBrandPopover(chip, partner) {
+  const extras = partner.brands.slice(BRAND_CAP);
+  if (!extras.length) return;
+  popoverTarget = chip;
+  chip.classList.add("open");
+  brandPopover.innerHTML =
+    "<h4>All brands (" + partner.brands.length + ")</h4>" +
+    '<div class="pop-brands">' +
+    partner.brands.map((b) => "<span>" + escapeHtml(b) + "</span>").join("") +
+    "</div>";
+
+  // Make it invisible first so measurements don't flash at the wrong spot
+  brandPopover.style.visibility = "hidden";
+  brandPopover.classList.add("show");
+
+  // Position near the chip using fixed coordinates (viewport space —
+  // same space as getBoundingClientRect, immune to page scroll).
+  const cr = chip.getBoundingClientRect();
+  const pw = brandPopover.offsetWidth;
+  const ph = brandPopover.offsetHeight;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  let left = cr.left + cr.width / 2 - pw / 2;
+  left = Math.max(8, Math.min(left, vw - pw - 8));
+
+  // Prefer above the chip; flip below if not enough room
+  let top = cr.top - ph - 8;
+  if (top < 8) top = cr.bottom + 8;
+  top = Math.max(8, Math.min(top, vh - ph - 8));
+
+  brandPopover.style.left = Math.round(left) + "px";
+  brandPopover.style.top = Math.round(top) + "px";
+  brandPopover.style.visibility = "";
+}
+
+function closeBrandPopover() {
+  if (popoverTarget) popoverTarget.classList.remove("open");
+  popoverTarget = null;
+  brandPopover.classList.remove("show");
+}
+
+// Hover intent: small delay on close so moving the mouse to the popover
+// (or between chips) doesn't flicker it closed.
+function scheduleHide() {
+  clearTimeout(popoverHideTimer);
+  popoverHideTimer = setTimeout(closeBrandPopover, 250);
+}
+function cancelHide() {
+  clearTimeout(popoverHideTimer);
+}
+
+// Hover intent: only schedule a hide when the pointer has genuinely left
+// both the chip and the popover; moving across intermediate elements or
+// toward the popover keeps it open.
+function isInsidePopoverArea(el) {
+  return !!el && !!(el.closest && (el.closest(".brand-popover") || el.closest("[data-pid].brand-more")));
+}
+
+document.addEventListener("mouseover", (e) => {
+  const chip = e.target.closest("[data-pid].brand-more");
+  if (chip) {
+    cancelHide();
+    if (chip !== popoverTarget) {
+      const partner = findPartnerById(chip.dataset.pid);
+      if (partner) openBrandPopover(chip, partner);
+    }
+    return;
+  }
+  if (popoverTarget && !isInsidePopoverArea(e.target)) {
+    scheduleHide();
+  }
+});
+brandPopover.addEventListener("mouseenter", cancelHide);
+brandPopover.addEventListener("mouseleave", scheduleHide);
+
+// Mobile / touch: tap toggles the popover on the chip
+document.addEventListener("click", (e) => {
+  const chip = e.target.closest("[data-pid].brand-more");
+  if (chip) {
+    e.preventDefault();
+    if (popoverTarget === chip) {
+      closeBrandPopover();
+    } else {
+      const partner = findPartnerById(chip.dataset.pid);
+      if (partner) openBrandPopover(chip, partner);
+    }
+    return;
+  }
+  // tap anywhere else closes it
+  if (popoverTarget && !e.target.closest(".brand-popover")) closeBrandPopover();
+});
+
+// Close on scroll/resize (position would be stale)
+window.addEventListener("scroll", () => { if (popoverTarget) closeBrandPopover(); }, { passive: true });
+window.addEventListener("resize", closeBrandPopover);
 
 /* ================= Events ================= */
 
