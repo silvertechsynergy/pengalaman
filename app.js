@@ -54,6 +54,54 @@ const els = {
   refreshIcon: $("refreshIcon"),
   retryBtn: $("retryBtn"),
   clearAllBtn: $("clearAllBtn"),
+  // Partner page
+  pagePengalaman: $("pagePengalaman"),
+  pagePartner: $("pagePartner"),
+  navPengalaman: $("navPengalaman"),
+  navPartner: $("navPartner"),
+  partnerSearch: $("partnerSearchInput"),
+  partnerClearBtn: $("partnerClearBtn"),
+  partnerFilterTags: $("partnerFilterTags"),
+  partnerActiveFilter: $("partnerActiveFilter"),
+  partnerActiveFilterText: $("partnerActiveFilterText"),
+  partnerGrid: $("partnerGrid"),
+  partnerLoading: $("partnerLoadingState"),
+  partnerError: $("partnerErrorState"),
+  partnerErrorMsg: $("partnerErrorMessage"),
+  partnerRetryBtn: $("partnerRetryBtn"),
+  partnerNoResults: $("partnerNoResults"),
+  partnerClearAllBtn: $("partnerClearAllBtn"),
+  pStatTotal: $("pStatTotal"),
+  pStatBrands: $("pStatBrands"),
+  pStatTags: $("pStatTags"),
+  pStatShowing: $("pStatShowing"),
+};
+
+// ----- Partner config & state -----
+const PARTNER_CSV_URL =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vT-GH3bbJjhR-nWwpWkFv_1P4ThD8DQuIwbEGKUTffZpk6Ezx3Cukl-qosha71dYmrjoXC7qrAptKt9/pub?gid=0&single=true&output=csv";
+
+const PCOL = {
+  id: "company_id",
+  name: "company_name",
+  website: "website",
+  email: "general_email",
+  phone: "general_phone",
+  sales: "sales_person",
+  salesEmail: "sales_email",
+  salesPhone: "sales_phone",
+  address: "office_address",
+  brands: "brand_carry",
+  tags: "tags",
+  credit: "credit_term",
+};
+
+const partnerState = {
+  records: [],
+  tags: [],
+  loaded: false, // lazy: only fetch when the Partner page is first opened
+  query: "",
+  activeTags: [],
 };
 
 // ----- State -----
@@ -134,6 +182,16 @@ const ICONS = {
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ICLASS"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>',
   check:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ICLASS"><path d="M20 6 9 17l-5-5"/></svg>',
+  globe:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ICLASS"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>',
+  mail:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ICLASS"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>',
+  "map-pin":
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ICLASS"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>',
+  wallet:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ICLASS"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>',
+  "external-link":
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ICLASS"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>',
 };
 
 function icon(name, cls) {
@@ -191,19 +249,23 @@ function formatDate(v) {
   return s; // anything else — display unchanged
 }
 
-async function loadCSVText() {
-  const url = SHEET_CSV_URL + "&_cb=" + Date.now();
+async function loadCSVFrom(url) {
+  const fullUrl = url + (url.includes("?") ? "&" : "?") + "_cb=" + Date.now();
   try {
-    const res = await fetch(url);
+    const res = await fetch(fullUrl);
     if (res.ok) return await res.text();
   } catch (e) {
     console.warn("Direct fetch failed, trying proxy fallback...", e);
   }
   // Fallback for file:// or strict networks
-  const proxy = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
+  const proxy = "https://api.allorigins.win/raw?url=" + encodeURIComponent(fullUrl);
   const res = await fetch(proxy);
   if (!res.ok) throw new Error("HTTP " + res.status + " via proxy");
   return await res.text();
+}
+
+async function loadCSVText() {
+  return loadCSVFrom(SHEET_CSV_URL);
 }
 
 async function fetchProjects() {
@@ -682,6 +744,337 @@ async function exportFiltered() {
   }
 }
 
+/* ================= Partner page ================= */
+
+function splitPartnerList(v) {
+  return clean(v)
+    .split(/[,;\n]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+async function fetchPartners() {
+  showPartnerLoading();
+  try {
+    if (typeof Papa === "undefined") throw new Error("CSV parser (PapaParse) failed to load from CDN.");
+    let csvText = await loadCSVFrom(PARTNER_CSV_URL);
+
+    if (/^\s*<(!doctype|html)/i.test(csvText)) {
+      throw new Error("Google Sheets returned a web page instead of CSV data for the partner sheet.");
+    }
+    const lines = csvText.split(/\r?\n/);
+    const idx = lines.findIndex((l) => l.includes(PCOL.name));
+    if (idx === -1) throw new Error("Could not find the header row (company_name) in the partner CSV.");
+    if (idx > 0) csvText = lines.slice(idx).join("\n");
+
+    const parsed = Papa.parse(csvText, {
+      header: true,
+      skipEmptyLines: "greedy",
+      transformHeader: (h) => h.trim(),
+    });
+
+    partnerState.records = parsed.data
+      .filter((row) => clean(row[PCOL.name]))
+      .map((row) => ({
+        id: clean(row[PCOL.id]),
+        name: clean(row[PCOL.name]),
+        website: clean(row[PCOL.website]),
+        email: clean(row[PCOL.email]),
+        phone: clean(row[PCOL.phone]),
+        sales: splitPartnerList(row[PCOL.sales]),
+        salesEmail: splitPartnerList(row[PCOL.salesEmail]),
+        salesPhone: splitPartnerList(row[PCOL.salesPhone]),
+        address: clean(row[PCOL.address]),
+        brands: splitPartnerList(row[PCOL.brands]),
+        tags: splitPartnerList(row[PCOL.tags]),
+        credit: clean(row[PCOL.credit]),
+      }));
+
+    if (partnerState.records.length === 0) {
+      throw new Error("The partner sheet loaded but contained no valid rows (company_name column is empty).");
+    }
+
+    // Unique tags with counts
+    const tagCount = {};
+    partnerState.records.forEach((r) =>
+      r.tags.forEach((t) => {
+        tagCount[t] = (tagCount[t] || 0) + 1;
+      })
+    );
+    partnerState.tags = Object.keys(tagCount)
+      .sort((a, b) => tagCount[b] - tagCount[a])
+      .map((t) => ({ name: t, count: tagCount[t] }));
+
+    partnerState.loaded = true;
+    showPartnerReady();
+    renderPartners();
+  } catch (err) {
+    console.error("Partner load failed:", err);
+    showPartnerError(err);
+  }
+}
+
+function getFilteredPartners() {
+  const q = partnerState.query.toLowerCase();
+  return partnerState.records.filter((r) => {
+    if (
+      partnerState.activeTags.length > 0 &&
+      !partnerState.activeTags.every((sel) =>
+        r.tags.some((t) => t.toLowerCase() === sel.toLowerCase())
+      )
+    )
+      return false;
+    if (!q) return true;
+
+    const haystack = [
+      r.id, r.name, r.website, r.email, r.phone, r.address,
+      ...r.sales, ...r.salesEmail, ...r.salesPhone,
+      ...r.brands, ...r.tags,
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    if (q.startsWith('"') && q.endsWith('"') && q.length > 2)
+      return haystack.includes(q.slice(1, -1));
+    if (q.includes(" or ")) {
+      const terms = q.split(" or ").map((t) => t.trim()).filter(Boolean);
+      return terms.some((t) => haystack.includes(t));
+    }
+    return q.split(/\s+/).every((w) => haystack.includes(w));
+  });
+}
+
+function partnerHighlight(text) {
+  const safe = escapeHtml(text || "");
+  const q = partnerState.query.trim();
+  if (!q) return safe;
+  let out = safe;
+  q.split(/\s+/)
+    .filter((w) => w.length > 1)
+    .forEach((word) => {
+      const re = new RegExp(
+        "(" + word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")",
+        "gi"
+      );
+      out = out.replace(re, "<mark>$1</mark>");
+    });
+  return out;
+}
+
+function partnerMetaRow(iconName, label, value, isLink, isMail) {
+  if (!value) return "";
+  let content;
+  if (isLink) {
+    const url = /^https?:\/\//i.test(value) ? value : "https://" + value;
+    content = `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="partner-link">${partnerHighlight(value)}</a>`;
+  } else if (isMail) {
+    content = `<a href="mailto:${escapeHtml(value)}" class="partner-link">${partnerHighlight(value)}</a>`;
+  } else {
+    content = partnerHighlight(value);
+  }
+  return `
+    <div class="flex items-start gap-1.5">
+      ${icon(iconName, "w-3 h-3 faint mt-0.5 flex-shrink-0")}
+      <span class="text-[11px] faint w-16 flex-shrink-0">${label}</span>
+      <span class="text-xs muted flex-1 break-words">${content}</span>
+    </div>`;
+}
+
+function partnerCardHtml(r, i) {
+  const delay = Math.min(i * 40, 400);
+  const tags = r.tags
+    .map(
+      (t) =>
+        `<button class="tag px-2 py-0.5 rounded text-[10px] font-medium" data-ptag="${escapeHtml(t)}">${partnerHighlight(t)}</button>`
+    )
+    .join("");
+  const brands = r.brands
+    .map(
+      (b) =>
+        `<span class="equip-chip px-2 py-0.5 rounded text-[10px] font-medium">${partnerHighlight(b)}</span>`
+    )
+    .join("");
+
+  const sales = r.sales.length ? escapeHtml(r.sales.join(", ")) : "";
+  const salesEmails = r.salesEmail
+    .map((e) => `<a href="mailto:${escapeHtml(e)}" class="partner-link">${partnerHighlight(e)}</a>`)
+    .join("<span class='faint'> · </span>");
+  const salesPhones = r.salesPhone
+    .map((p) => partnerHighlight(p))
+    .join("<span class='faint'> · </span>");
+  const websiteBtn = r.website
+    ? `<a href="${escapeHtml(/^https?:\/\//i.test(r.website) ? r.website : "https://" + r.website)}" target="_blank" rel="noopener noreferrer" class="link-btn" title="Visit website: ${escapeHtml(r.website)}">${icon("external-link", "w-3.5 h-3.5")}</a>`
+    : "";
+
+  return `
+  <div class="project-card rounded-2xl p-6 flex flex-col fade-in-up" style="animation-delay: ${delay}ms">
+    <div class="flex items-start justify-between gap-2 mb-3">
+      <span class="text-[11px] faint font-mono">${partnerHighlight(r.id)}</span>
+      ${websiteBtn}
+    </div>
+
+    <h3 class="text-base font-medium mb-3 leading-snug">${partnerHighlight(r.name)}</h3>
+
+    <div class="flex flex-col gap-1.5 mb-4 flex-1">
+      ${partnerMetaRow("globe", "Website", r.website, true)}
+      ${partnerMetaRow("mail", "Email", r.email, false, true)}
+      ${partnerMetaRow("phone", "Phone", r.phone)}
+      ${r.sales ? partnerMetaRow("user", "Sales", r.sales.join(", ")) : ""}
+      ${salesEmails ? `<div class="flex items-start gap-1.5">${icon("mail", "w-3 h-3 faint mt-0.5 flex-shrink-0")}<span class="text-[11px] faint w-16 flex-shrink-0">S. Email</span><span class="text-xs muted flex-1 break-words">${salesEmails}</span></div>` : ""}
+      ${salesPhones ? `<div class="flex items-start gap-1.5">${icon("phone", "w-3 h-3 faint mt-0.5 flex-shrink-0")}<span class="text-[11px] faint w-16 flex-shrink-0">S. Phone</span><span class="text-xs muted flex-1">${salesPhones}</span></div>` : ""}
+      ${partnerMetaRow("map-pin", "Address", r.address)}
+      ${r.credit ? partnerMetaRow("wallet", "Credit", r.credit) : ""}
+    </div>
+
+    ${brands ? `<div class="flex flex-wrap gap-1.5 mb-3">${brands}</div>` : ""}
+    ${tags ? `<div class="flex flex-wrap gap-1.5 pt-3" style="border-top: 1px solid var(--border);">${tags}</div>` : ""}
+  </div>`;
+}
+
+function renderPartnerFilterTags() {
+  const btn = (label, active, count) =>
+    `<button class="tag flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium ${active ? "active" : ""}" data-ptagfilter="${escapeHtml(
+      label
+    )}">${active ? icon("check", "w-3 h-3 inline -mt-0.5") + " " : ""}${escapeHtml(label)}${count != null ? ` <span class="ml-1 opacity-50">${count}</span>` : ""}</button>`;
+
+  let html = btn("All", partnerState.activeTags.length === 0, partnerState.records.length);
+  partnerState.tags.forEach((t) => {
+    html += btn(t.name, partnerState.activeTags.includes(t.name), t.count);
+  });
+  els.partnerFilterTags.innerHTML = html;
+}
+
+function renderPartners() {
+  const filtered = getFilteredPartners();
+
+  const allBrands = new Set(partnerState.records.flatMap((r) => r.brands));
+  els.pStatTotal.textContent = partnerState.records.length;
+  els.pStatBrands.textContent = allBrands.size;
+  els.pStatTags.textContent = partnerState.tags.length;
+  els.pStatShowing.textContent = filtered.length;
+
+  renderPartnerFilterTags();
+
+  const parts = [];
+  if (partnerState.activeTags.length > 0) parts.push(`tags: ${partnerState.activeTags.join(" + ")}`);
+  if (partnerState.query) parts.push(`"${partnerState.query}"`);
+  if (parts.length) {
+    els.partnerActiveFilter.classList.remove("hidden");
+    els.partnerActiveFilterText.textContent = parts.join("  •  ");
+  } else {
+    els.partnerActiveFilter.classList.add("hidden");
+  }
+
+  if (filtered.length === 0) {
+    els.partnerGrid.innerHTML = "";
+    els.partnerNoResults.classList.remove("hidden");
+  } else {
+    els.partnerNoResults.classList.add("hidden");
+    els.partnerGrid.innerHTML = filtered.map(partnerCardHtml).join("");
+  }
+}
+
+function showPartnerLoading() {
+  els.partnerLoading.classList.remove("hidden");
+  els.partnerError.classList.add("hidden");
+  els.partnerGrid.classList.add("hidden");
+  els.partnerNoResults.classList.add("hidden");
+}
+
+function showPartnerReady() {
+  els.partnerLoading.classList.add("hidden");
+  els.partnerGrid.classList.remove("hidden");
+}
+
+function showPartnerError(err) {
+  els.partnerLoading.classList.add("hidden");
+  els.partnerError.classList.remove("hidden");
+  let hint = err && err.message ? err.message : String(err);
+  if (location.protocol === "file:") {
+    hint += " — Note: opening via file:// is restricted by browsers. Serve with a local server or deploy.";
+  }
+  els.partnerErrorMsg.textContent = hint;
+}
+
+function clearPartnerSearchAndFilters() {
+  partnerState.query = "";
+  partnerState.activeTags = [];
+  els.partnerSearch.value = "";
+  els.partnerClearBtn.classList.add("hidden");
+  renderPartners();
+}
+
+/* ================= Router (Pengalaman / Partner) ================= */
+
+function showPage(page) {
+  const isPartner = page === "partner";
+  els.pagePengalaman.classList.toggle("hidden", isPartner);
+  els.pagePartner.classList.toggle("hidden", !isPartner);
+  els.navPengalaman.classList.toggle("active", !isPartner);
+  els.navPartner.classList.toggle("active", isPartner);
+
+  // Export/refresh buttons only make sense on the Pengalaman page
+  els.exportBtn.classList.toggle("hidden", isPartner);
+
+  // Replay the entrance animation on each visit (mirrors the Partner page).
+  if (!isPartner && hasAnimatedOnce) {
+    els.grid.classList.remove("no-anim");
+    setTimeout(() => els.grid.classList.add("no-anim"), 800);
+  }
+
+  if (isPartner && !partnerState.loaded) fetchPartners();
+  window.scrollTo({ top: 0 });
+}
+
+function currentRoute() {
+  return location.hash.startsWith("#/partner") ? "partner" : "pengalaman";
+}
+
+window.addEventListener("hashchange", () => showPage(currentRoute()));
+
+/* ================= Partner events ================= */
+
+let partnerDebounce;
+els.partnerSearch.addEventListener("input", (e) => {
+  clearTimeout(partnerDebounce);
+  partnerDebounce = setTimeout(() => {
+    partnerState.query = e.target.value.trim();
+    els.partnerClearBtn.classList.toggle("hidden", !partnerState.query);
+    renderPartners();
+  }, 180);
+});
+
+els.partnerClearBtn.addEventListener("click", () => {
+  clearPartnerSearchAndFilters();
+  els.partnerSearch.focus();
+});
+els.partnerClearAllBtn.addEventListener("click", clearPartnerSearchAndFilters);
+els.partnerRetryBtn.addEventListener("click", fetchPartners);
+
+function togglePartnerTag(tag) {
+  const i = partnerState.activeTags.indexOf(tag);
+  if (i === -1) partnerState.activeTags.push(tag);
+  else partnerState.activeTags.splice(i, 1);
+}
+
+// Partner tag clicks (card tags + filter bar) via delegation
+document.addEventListener("click", (e) => {
+  const cardTag = e.target.closest("[data-ptag]");
+  if (cardTag) {
+    togglePartnerTag(cardTag.dataset.ptag);
+    renderPartners();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+  const filterTag = e.target.closest("[data-ptagfilter]");
+  if (filterTag) {
+    const t = filterTag.dataset.ptagfilter;
+    if (t === "All") partnerState.activeTags = [];
+    else togglePartnerTag(t);
+    renderPartners();
+  }
+});
+
 /* ================= Events ================= */
 
 let debounceTimer;
@@ -748,8 +1141,19 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// Keyboard shortcuts
+// Keyboard shortcuts (page-aware)
 document.addEventListener("keydown", (e) => {
+  if (currentRoute() === "partner") {
+    if (e.key === "/" && document.activeElement !== els.partnerSearch) {
+      e.preventDefault();
+      els.partnerSearch.focus();
+    }
+    if (e.key === "Escape") {
+      clearPartnerSearchAndFilters();
+      els.partnerSearch.blur();
+    }
+    return;
+  }
   if (e.key === "/" && document.activeElement !== els.search) {
     e.preventDefault();
     els.search.focus();
@@ -763,4 +1167,5 @@ document.addEventListener("keydown", (e) => {
 /* ================= Init ================= */
 
 initTheme();
+showPage(currentRoute());
 fetchProjects();
